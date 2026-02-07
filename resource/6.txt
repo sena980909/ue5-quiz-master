@@ -1,0 +1,69 @@
+[UE5 이론] 제6강: 프론트엔드 구축 (UMG와 데이터 바인딩)
+1. UMG (Unreal Motion Graphics) = "웹 프론트엔드"
+언리얼 엔진의 UI 시스템인 UMG는 웹 개발과 구조가 매우 흡사합니다.
+
+• Widget Blueprint: UI를 만드는 파일 포맷.
+
+  • Designer 탭: HTML/CSS와 같습니다. (버튼 배치, 색상, 레이아웃)
+
+  • Graph 탭: JavaScript/TypeScript와 같습니다. (클릭 이벤트, 로직)
+
+• Canvas Panel: `` 태그와 같은 컨테이너 역할입니다.
+
+• Progress Bar: 체력바 등을 표현하는 컴포넌트입니다.
+
+2. 데이터 바인딩의 딜레마: Polling vs Push
+UI가 C++ 데이터(체력)를 어떻게 가져올 것인가? 백엔드 개발자가 가장 주의해야 할 성능 포인트입니다.
+
+A. Polling 방식 (Bad Pattern)
+
+• 방식: UI가 매 프레임(Tick)마다 캐릭터에게 "너 체력 몇이야?"라고 물어보고 갱신합니다.
+
+• 코드: `GetPlayerCharacter()->GetHP()`를 1초에 60번~144번 호출.
+
+• 비유: 클라이언트가 서버에 16ms마다 GET 요청을 날리는 꼴입니다. 낭비가 심합니다.
+
+• 언리얼 용어: "프로퍼티 바인딩(Property Binding)" 기능이 이 방식입니다. 편하지만 무겁습니다.
+
+B. Push 방식 (Good Pattern) - "이벤트 주도"
+
+• 방식: UI는 가만히 있고, 데이터가 변했을 때만 알림을 받습니다.
+
+• 코드: 5강에서 만든 **델리게이트(Delegate)**를 구독합니다.
+
+• 비유: WebSocket이나 SSE (Server-Sent Events). 서버가 "데이터 변했어!"라고 밀어줄(Push) 때만 화면을 갱신합니다.
+
+• 우리가 쓸 방식입니다.
+
+3. MVVM 패턴의 적용 (Model - View - ViewModel)
+언리얼 UMG 작업을 할 때는 MVVM 패턴을 머릿속에 그리면 좋습니다.
+
+• Model (데이터): C++ StatComponent.
+
+  • `CurrentHP`, `MaxHP`를 가지고 있으며, 데이터가 변하면 `Broadcast`합니다.
+
+• View (화면): UMG Widget.
+
+  • `ProgressBar` 같은 시각적 요소만 있습니다.
+
+• ViewModel (연결책): Widget Blueprint의 Graph.
+
+  • `Event Construct` (React의 `componentDidMount`) 시점에 모델을 찾습니다.
+
+  • 모델의 델리게이트에 내 함수(UI 갱신 로직)를 연결(Bind)합니다.
+
+4. 실전 구현 흐름 (Flow)
+1. 초기화 (Initialize): 위젯이 생성될 때(`Construct`), `GetOwningPlayerPawn`으로 내 캐릭터를 찾습니다.
+
+2. 구독 (Subscribe): 캐릭터의 `StatComponent`에 있는 `OnHPChanged` 델리게이트에 `UpdateHPBar`라는 함수를 연결합니다.
+
+3. 갱신 (Update): 게임 플레이 중 적에게 맞아 `StatComponent`가 `Broadcast`를 하면, UI의 `UpdateHPBar`가 자동으로 실행되어 게이지를 깎습니다.
+
+5. 요약
+1. UMG: HTML/CSS/JS와 유사한 UI 저작 도구.
+
+2. Bind Widget: C++ 변수와 위젯 디자이너의 요소를 연결하는 메타데이터.
+
+3. Event-Driven: 매 프레임 검사하지 말고, 델리게이트 알림이 올 때만 갱신하라. (성능 최적화의 핵심)
+
+---

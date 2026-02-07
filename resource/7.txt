@@ -1,0 +1,71 @@
+[UE5 이론] 제7강: 적(Enemy)의 두뇌와 길 찾기 (AI 기초)
+1. 빙의(Possess) 시스템: 몸통과 영혼의 분리
+언리얼 엔진의 캐릭터 구조는 독특합니다. 몸과 뇌가 분리되어 있습니다.
+
+• Pawn (폰): 껍데기(Body). 물리적 충돌과 외형(Mesh)만 담당합니다.
+
+• Controller (컨트롤러): 영혼(Soul/Brain). 입력을 처리하고 폰에게 명령을 내립니다.
+
+  • PlayerController: 사람(키보드/마우스)의 입력을 받음.
+
+  • AIController: 컴퓨터 알고리즘의 입력을 받음.
+
+• Possess (빙의): 컨트롤러가 폰을 조종하기 시작하는 행위.
+
+• 백엔드 비유:
+
+  • **Session (Controller)**과 **User Entity (Pawn)**의 관계입니다. 세션이 끊겨도(로그아웃), 유저 데이터는 남아있죠? 반대로 유저가 죽어도(캐릭터 사망), AI 로직 자체는 살아있을 수 있습니다.
+
+2. 내비게이션 시스템 (Navigation System): "길 찾기 알고리즘"
+AI가 플레이어를 쫓아가려면 "갈 수 있는 길"인지 알아야 합니다.
+
+• NavMeshBoundsVolume: 개발자가 레벨에 배치하는 투명한 박스입니다.
+
+• Recast NavMesh: 박스 안의 바닥을 분석해 **이동 가능한 구역(Walkable Surface)**을 미리 구워(Bake) 놓습니다.
+
+• Pathfinding: AI는 눈으로 보고 가는 게 아니라, 이 구역 데이터를 기반으로 경로를 계산합니다.
+
+• 백엔드 비유: Graph DB 또는 Dijkstra/A 알고리즘*.
+
+  • "A지점에서 B지점까지 가는 최단 경로(Node)를 찾아라"라는 쿼리를 엔진에게 날리는 것과 같습니다.
+
+3. 유한 상태 머신 (FSM: Finite State Machine)
+AI의 행동 패턴을 가장 직관적으로 설계하는 방법입니다.
+
+• 개념: AI는 한 번에 하나의 **상태(State)**만 가질 수 있습니다.
+
+• 상태 흐름 (Flow):
+
+  1. Idle (대기): 제자리에 서 있거나 순찰. (플레이어가 감지되면 -> Chase)
+
+  2. Chase (추적): 플레이어 위치로 이동. (사거리 내에 들어오면 -> Attack)
+
+  3. Attack (공격): 데미지 입힘. (플레이어가 멀어지면 -> Chase, 죽으면 -> Victory)
+
+  4. Die (사망): AI 정지.
+
+• 백엔드 비유: 주문 상태 관리 (Order Status).
+
+  • `ORDER_PLACED` -> `PAYMENT_CONFIRMED` -> `SHIPPING` -> `DELIVERED`.
+
+  • 각 상태에 따라 실행 가능한 로직이 엄격히 분리됩니다.
+
+4. AI Perception (감각 시스템): "센서"
+AI가 플레이어를 "봤다"라고 판단하는 기준입니다.
+
+• Sight Config: 시야각(90도), 시야 거리(1000cm) 등을 설정.
+
+• Stimulus (자극): 시야 범위 내에 `Pawn` 채널을 가진 물체가 들어오면 `OnTargetPerceptionUpdated` 델리게이트(이벤트)가 발동합니다.
+
+• 로직: "이벤트가 발생하면 FSM 상태를 `Idle`에서 `Chase`로 바꿔라."
+
+5. 요약
+1. Controller & Pawn: 뇌와 몸의 분리. AIController가 Pawn을 `Possess`해야 움직인다.
+
+2. NavMesh: AI가 이동할 수 있는 '지도 데이터'. (Pathfinding의 기준)
+
+3. FSM: AI의 행동 로직을 상태별로 나누어 관리하는 패턴. (Switch-Case 문과 유사)
+
+4. Perception: 시각/청각 센서. FSM의 상태를 바꾸는 트리거 역할.
+
+---

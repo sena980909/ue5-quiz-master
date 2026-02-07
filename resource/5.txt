@@ -1,0 +1,75 @@
+[UE5 이론] 제5강: 데이터와 로직의 분리 (액터 컴포넌트)
+1. 갓 클래스(God Class)의 위험성
+초보자가 가장 많이 하는 실수는 캐릭터 클래스(`MyCharacter`) 하나에 모든 변수와 로직을 때려 넣는 것입니다.
+
+• 나쁜 예: `Character` 클래스 안에 `HP`, `MP`, `인벤토리`, `스킬쿨타임`, `퀘스트상태` 변수가 다 들어있음.
+
+• 문제점:
+
+  • 코드가 3,000줄이 넘어갑니다. (유지보수 불가)
+
+  • 적(Enemy)을 만들 때 똑같은 변수를 또 선언해야 합니다. (코드 중복)
+
+• 백엔드 비유: Controller 하나에 모든 비즈니스 로직과 DB 쿼리를 다 넣는 Monolithic 구조와 같습니다.
+
+2. 액터 컴포넌트 (Actor Component) = "도메인 서비스"
+우리는 관심사의 분리(Separation of Concerns) 원칙을 적용해야 합니다.
+
+• 해결책: 기능별로 클래스를 쪼개서 컴포넌트로 만듭니다.
+
+  • `UStatComponent`: HP, MP, 공격력 계산 담당.
+
+  • `UInventoryComponent`: 아이템 획득, 버리기 담당.
+
+  • `USkillComponent`: 스킬 쿨타임, 레벨업 담당.
+
+• 장점:
+
+  • 이 컴포넌트들을 주인공에게 붙이면 '주인공 스탯'이 되고, 몬스터에게 붙이면 '몬스터 스탯'이 됩니다. (재사용성 100%)
+
+• 백엔드 비유: Service Layer 또는 Microservice. 특정 도메인 로직만 전담하는 모듈입니다.
+
+3. 언리얼 표준 데미지 처리 (Transaction Flow)
+게임에서 "때린다"는 행위는 네트워크 트랜잭션처럼 정해진 규약이 있습니다.
+
+1. 가해자 (Attacker): `UGameplayStatics::ApplyDamage(...)`
+
+  • 의미: "이 대상에게 데미지 10을 줘라." (명령 발송)
+
+  • 비유: `POST /api/damage { targetId: 100, amount: 10 }` 요청 전송.
+
+2. 엔진 (Middleware):
+
+  • 대상이 유효한지, 무적 상태인지 등을 체크하고 이벤트를 라우팅합니다.
+
+3. 피해자 (Victim): `TakeDamage(...)` 함수 자동 실행
+
+  • 의미: "어? 나 맞았네?" 하고 내부 로직 수행.
+
+  • 우리는 이 함수를 오버라이드해서, 내 `StatComponent`의 HP를 깎습니다.
+
+4. 델리게이트 (Delegate)를 통한 결합도 낮추기
+HP가 깎이면 화면의 UI(체력바)도 줄어들어야 합니다. 하지만 `StatComponent`가 `UIWidget`을 직접 알면 안 됩니다. (상호 참조 금지)
+
+• 패턴: Observer Pattern (Pub/Sub)
+
+• 구현:
+
+  1. StatComponent (Publisher): "내 체력 변했음! (Broadcast)" 하고 허공에 외칩니다.
+
+  2. UIWidget (Subscriber): 그 소리를 듣고 있다가 스스로 게이지를 줄입니다.
+
+• 백엔드 비유: Kafka / RabbitMQ.
+
+  • 주문 서비스(Stat)는 주문 완료 메시지만 발행할 뿐, 배송 서비스(UI)가 그걸 받아서 뭘 하든 신경 쓰지 않습니다.
+
+5. 요약
+1. Actor Component: 비즈니스 로직을 담는 모듈 (Service).
+
+2. Reusability: 컴포넌트는 플레이어, 몬스터, 보스 어디든 붙일 수 있다.
+
+3. ApplyDamage -> TakeDamage: 엔진이 제공하는 표준 데미지 파이프라인.
+
+4. Delegate: 데이터와 UI의 의존성을 끊어주는 이벤트 메시징 시스템.
+
+---

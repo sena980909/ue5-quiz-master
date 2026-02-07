@@ -1,0 +1,77 @@
+[UE5 이론] 제11강: 적(Enemy) AI 구현 (Perception & Chase)
+1. 뇌와 몸의 결합 (Auto Possess)
+플레이어는 게임 시작 시 `PlayerController`가 빙의(Possess)하지만, 적(AI)은 누가 빙의할까요?
+
+• Auto Possess AI: 적 캐릭터 블루프린트 설정에 있습니다.
+
+  • `Placed in World`: 맵에 미리 배치된 놈만 AI가 조종함.
+
+  • `Spawned`: 동적으로 소환된 놈만 조종함.
+
+  • Placed in World or Spawned: (정석) 둘 다 조종함. 이걸로 설정해야 합니다.
+
+2. AI 퍼셉션 (AI Perception) = "감시 카메라 센서"
+AI가 "플레이어가 내 앞에 있다"는 것을 아는 것은 마법이 아닙니다. 철저한 센싱(Sensing) 과정입니다.
+
+• 구성 요소:
+
+  • AISenseConfig_Sight: 시각 센서 설정 (시야각 90도, 거리 15m 등).
+
+  • Stimulus (자극): 센서에 포착된 정보.
+
+• 작동 방식 (Event-Driven):
+
+  • 매 프레임 "앞에 누구 있나?" 검사하지 않습니다(Polling X).
+
+  • 시야 범위에 `Pawn` 채널을 가진 물체가 들어오면 `OnTargetPerceptionUpdated`라는 **이벤트가 발생(Push)**합니다.
+
+• 백엔드 비유: Monitoring Alert. CPU 사용량이 90% 넘으면 알람이 울리듯, 시야에 적이 들어오면 함수가 호출됩니다.
+
+3. 내비게이션 (Navigation) = "그래프 데이터"
+AI는 눈이 없어서 앞에 벽이 있는지 모릅니다. 오직 NavMesh 데이터만 믿고 갑니다.
+
+• NavMeshBoundsVolume: 개발자가 맵에 깔아두는 영역.
+
+• Recast (Bake): 엔진이 이 영역을 분석해서 **"갈 수 있는 바닥(Polygon)"**들의 그래프를 만듭니다.
+
+• 이동 원리:
+
+  • AI: "현재 위치에서 플레이어 위치까지 가는 길 알려줘."
+
+  • 엔진: A 알고리즘*으로 최단 경로(Path)를 계산해서 좌표 리스트를 줍니다.
+
+4. 추적 로직의 흐름 (FSM Flow)
+7강에서 배운 상태 머신이 실제로 어떻게 돌아가는지 봅시다.
+
+1. Idle (대기):
+
+  • 아무것도 안 하거나 랜덤 순찰.
+
+  • Event: `Perception` 센서가 발동됨 -> "플레이어 발견!"
+
+  • Transition: 상태를 `Chase`로 변경.
+
+2. Chase (추적):
+
+  • `Tick` 함수에서 지속적으로 `MoveToActor(Player)` 명령 실행.
+
+  • Condition: 플레이어와의 거리가 `AttackRange`(공격 사거리)보다 가까워졌나?
+
+  • Transition: 상태를 `Attack`으로 변경.
+
+3. Attack (공격):
+
+  • 이동을 멈추고 `AttackMontage` 재생 (10강 내용).
+
+  • 공격이 끝나면 다시 거리를 재보고 `Chase`나 `Idle`로 복귀.
+
+5. 요약
+1. Auto Possess: AIController가 자동으로 몸통을 차지하게 설정해야 한다.
+
+2. Perception: Polling이 아니라 Event 방식으로 적을 감지한다.
+
+3. NavMesh: AI가 다니는 길(DB)이 미리 구워져(Bake) 있어야 한다.
+
+4. MoveTo: A* 알고리즘을 캡슐화한 엔진 함수.
+
+---

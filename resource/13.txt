@@ -1,0 +1,86 @@
+[UE5 이론] 제13강: 데이터의 영속성 (Save & Load 시스템)
+1. 휘발성 메모리 vs 영속성 저장소
+게임 플레이 중의 모든 데이터(HP, 위치, 점수)는 RAM에 있습니다. 게임을 끄면(Process Kill) 다 사라집니다.
+
+• RAM (Level/Actor): Redis와 같습니다. 빠르지만 끄면 날아갑니다.
+
+• Disk (SaveGame): MySQL/Filesystem과 같습니다. 느리지만 영원합니다.
+
+• 목표: RAM에 있는 데이터를 객체화해서 Disk에 쓰고(Save), 다시 읽어오는(Load) 파이프라인 구축.
+
+2. USaveGame 클래스: "DTO 정의"
+언리얼에서는 저장하고 싶은 데이터를 담을 그릇으로 `USaveGame` 클래스를 상속받아 사용합니다.
+
+• 개념: DB 테이블 스키마나 **DTO(Data Transfer Object)**를 정의하는 것과 같습니다.
+
+• 구조:
+
+```
+
+// MySaveGame.h
+
+UPROPERTY(VisibleAnywhere)
+
+float PlayerHP;
+
+UPROPERTY(VisibleAnywhere)
+
+FVector PlayerLocation;
+
+UPROPERTY(VisibleAnywhere)
+
+int32 HighScore;
+
+```
+
+• 특징: 이 클래스 안에 선언된 변수만 디스크에 저장됩니다. (액터의 모든 정보가 저장되는 게 아님!)
+
+3. 직렬화 (Serialization): "객체를 바이너리로"
+복잡한 C++ 객체를 0과 1의 흐름(Stream)으로 바꾸는 과정입니다.
+
+• FArchive: 언리얼의 직렬화 처리기입니다.
+
+• 작동 원리:
+
+  • Save: `USaveGame` 객체 -> 바이너리 변환 -> `.sav` 파일 생성.
+
+  • Load: `.sav` 파일 -> 바이너리 해석 -> `USaveGame` 객체 복원.
+
+• 백엔드 비유: Java Object를 JSON이나 Protobuf로 변환하여 전송하는 과정입니다.
+
+4. 슬롯 시스템 (Slot System): "Primary Key"
+언리얼은 파일 시스템을 직접 다루는 대신 **슬롯 이름(String)**으로 관리합니다.
+
+• Slot Name: 파일명(ID)입니다. (예: "Slot_01", "AutoSave").
+
+• User Index: 로컬 멀티플레이어(콘솔 게임 등)에서 유저를 구분하는 ID입니다. (보통 0번).
+
+• API:
+
+  • `UGameplayStatics::SaveGameToSlot(SaveInstance, "Slot_01", 0)`
+
+  • `UGameplayStatics::LoadGameFromSlot("Slot_01", 0)`
+
+[Image of Unreal Engine SaveGameToSlot and LoadGameFromSlot blueprint nodes flow]
+
+5. 비동기 저장 (Async Save): "Non-blocking I/O"
+백엔드에서 DB I/O가 메인 스레드를 막으면 서버가 멈추듯, 게임에서도 저장하느라 화면이 멈추면 안 됩니다.
+
+• Sync 방식: `SaveGameToSlot`. 저장하는 동안 프레임 드랍 발생(렉 걸림).
+
+• Async 방식: `AsyncSaveGameToSlot`.
+
+  • 별도의 스레드에서 저장을 수행하고, 완료되면 **델리게이트(Callback)**로 알려줍니다.
+
+• 백엔드 비유: Async/Await 또는 CompletableFuture.
+
+6. 요약
+1. USaveGame: 저장할 데이터만 추려낸 DTO 클래스.
+
+2. Serialization: 메모리 객체를 파일로 변환하는 기술.
+
+3. Slot: 저장 파일을 구분하는 Key.
+
+4. Async: 게임 렉을 방지하기 위한 비동기 저장 필수.
+
+---

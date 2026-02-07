@@ -1,0 +1,61 @@
+[UE5 이론] 제15강: 게임의 배포 (패키징과 최적화)
+1. 패키징 (Packaging): "배포 아티팩트 생성"
+우리가 에디터에서 플레이하던 프로젝트를 남들에게 줄 수 있는 **실행 파일(.exe)**로 만드는 과정입니다.
+
+• Cooking (쿠킹):
+
+  • 에셋(텍스처, 모델)을 대상 플랫폼(Windows, Android)에 최적화된 포맷으로 변환하는 과정입니다.
+
+  • 백엔드 비유: Java 소스를 `.class`로 컴파일하고, 리소스를 압축하여 JAR/WAR 파일을 만드는 빌드 과정(Maven/Gradle Build)과 같습니다.
+
+2. 빌드 설정 (Build Configuration)
+프로젝트를 어떤 목적으로 빌드할지 결정합니다.
+
+• Development (개발용):
+
+  • 콘솔 커맨드(`~`키), 로그(`UE_LOG`), 디버깅 정보가 포함됩니다.
+
+  • 비유: `application-dev.yml`. 디버그 로그가 찍히고, 개발자 도구가 열려 있는 상태.
+
+• Shipping (배포용):
+
+  • 모든 디버그 기능이 제거되고, 성능이 최적화됩니다. 최종 유저에게 줄 때 사용합니다.
+
+  • 비유: `application-prod.yml`. 로그 레벨이 ERROR로 상향되고, 불필요한 엔드포인트가 차단된 상용 버전.
+
+3. 필수 설정 체크리스트
+패키징 전에 반드시 확인해야 할 설정들입니다. (`프로젝트 세팅 > 패키징`)
+
+1. List of maps to include in a packaged build:
+
+  • 여기에 포함할 레벨(맵)을 명시하지 않으면, 게임이 검은 화면으로 시작될 수 있습니다.
+
+2. Default GameMap:
+
+  • 게임을 켰을 때 가장 먼저 로드될 맵(타이틀 화면 등)이 올바르게 설정되었는지 확인합니다.
+
+4. 최적화 기초 (Optimization) = "성능 튜닝"
+게임이 느리다면 어디가 문제인지 파악해야 합니다.
+
+• Stat Commands (콘솔 커맨드):
+
+  • `stat fps`: 프레임 레이트 표시.
+
+  • `stat unit`: 병목 구간 확인 (Game Thread vs GPU).
+
+• Unreal Insights:
+
+  • 엔진이 제공하는 강력한 프로파일링 툴.
+
+  • 백엔드 비유: Pinpoint, New Relic, Datadog 같은 APM(Application Performance Monitoring) 도구입니다. CPU 스파이크나 메모리 누수를 잡습니다.
+
+5. 전체 로드맵 완주 회고
+1강부터 15강까지, **"백엔드 개발자의 시각"**으로 언리얼 엔진을 해석했습니다.
+
+1. 구조: Actor/Component (Container/Module).
+
+2. 데이터: SaveGame/DataAsset (DB/DTO).
+
+3. 로직: Blueprint/C++ (Script/Service).
+
+4. 네트워크: Replication/RPC (Sync/API).

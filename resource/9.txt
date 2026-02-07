@@ -1,0 +1,89 @@
+[UE5 이론] 제9강: 캐릭터와 애니메이션의 연동 (Animation Blueprint)
+1. 꼭두각시 인형의 원리 (Logic vs Visual)
+언리얼 엔진에서 캐릭터의 움직임은 철저하게 분리되어 있습니다.
+
+• C++ 캐릭터 (Pawn): **"인형사"**입니다.
+
+  • 실제 위치를 옮기고, 속도를 계산하고, 점프 상태를 판단합니다. (논리적 데이터)
+
+• Skeletal Mesh: **"인형"**입니다.
+
+  • 뼈(Bone)와 살(Mesh)이 있지만, 스스로 움직이지 못합니다.
+
+• Animation Blueprint (AnimBP): **"실(String)"**입니다.
+
+  • C++에서 계산된 데이터(속도, 공중 체류 여부)를 받아서, 인형의 팔다리를 어떻게 움직일지 결정합니다.
+
+2. 애니메이션 블루프린트의 두 가지 엔진
+AnimBP 내부에는 두 개의 핵심 영역이 있습니다.
+
+A. 이벤트 그래프 (Event Graph) = "Data Fetcher"
+
+• 역할: 매 프레임(Tick)마다 C++ 캐릭터에게서 상태 정보를 가져와 내 변수에 저장합니다.
+
+• 작동:
+
+  1. `TryGetPawnOwner()`: 내 주인(C++ 캐릭터)을 찾습니다.
+
+  2. `GetVelocity()`: 속도를 가져와서 `Speed` 변수에 저장.
+
+  3. `IsFalling()`: 공중에 떴는지 확인해서 `IsAir` 변수에 저장.
+
+• 백엔드 비유: DTO Mapping. DB 엔티티(C++ Pawn)의 데이터를 뷰 모델(AnimBP)의 필드로 복사해오는 과정입니다.
+
+B. 애님 그래프 (Anim Graph) = "Renderer"
+
+• 역할: 이벤트 그래프가 업데이트한 변수(`Speed`, `IsAir`)를 보고, 어떤 모션을 재생할지 결정합니다.
+
+• 작동:
+
+  • "Speed가 0이면? -> Idle 애니메이션 재생"
+
+  • "Speed가 300이면? -> Run 애니메이션 재생"
+
+  • "IsAir가 True면? -> Jump 애니메이션 재생"
+
+• 백엔드 비유: View Logic (JSP/Thymeleaf). `if (user.isAdmin)`이면 관리자 버튼을 렌더링하는 것과 같습니다.
+
+3. 스테이트 머신 (State Machine) - 시각적 전이
+7강의 AI FSM은 "행동(뇌)"의 상태였지만, 여기서는 "모션(몸)"의 상태를 관리합니다.
+
+• 구조:
+
+  • Idle/Run: 땅에 붙어있는 상태. (속도에 따라 블렌딩)
+
+  • JumpStart: 점프 도약 모션.
+
+  • JumpLoop: 공중에 떠 있는 모션.
+
+  • JumpEnd: 착지 모션.
+
+• 트랜지션 룰 (Transition Rule): 상태가 넘어가는 조건.
+
+  • `Idle` -> `JumpStart`: `IsAir`가 true일 때.
+
+  • `JumpLoop` -> `JumpEnd`: `IsAir`가 false일 때.
+
+4. 블렌드 스페이스 (Blend Space)
+• 개념: 여러 애니메이션을 수치 하나로 부드럽게 섞는(Blend) 기술입니다.
+
+• 예시: `Speed`라는 변수 하나로 제어.
+
+  • Speed 0: 대기 (Idle)
+
+  • Speed 150: 걷기 (Walk)
+
+  • Speed 600: 달리기 (Run)
+
+  • 결과: Speed가 300이면? "걷기 50% + 달리기 50%"가 섞인 동작이 자동으로 나옵니다.
+
+5. 요약
+1. 단방향 흐름: C++(데이터 계산) -> AnimBP(데이터 복사) -> AnimGraph(모션 출력).
+
+2. Event Graph: 데이터를 동기화하는 곳.
+
+3. Anim Graph: 데이터를 기반으로 그림을 그리는 곳.
+
+4. Blend Space: 수치에 따라 애니메이션을 섞어주는 믹서기.
+
+---

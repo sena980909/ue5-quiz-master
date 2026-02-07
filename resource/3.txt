@@ -1,0 +1,79 @@
+[UE5 이론] 제3강: 입력 시스템의 혁명 (Enhanced Input)
+1. 기존 입력 방식의 문제점 vs 새로운 철학
+과거에는 "W키를 누르면 앞으로 간다"라고 하드코딩했습니다. 이는 **강한 결합(Tight Coupling)**입니다.
+
+• Enhanced Input의 철학: "의도(Intent)와 입력(Input)을 분리하라."
+
+• 백엔드 비유: **인터페이스(Interface)와 구현체(Implementation)**를 분리하는 것과 같습니다.
+
+2. 3단계 아키텍처 (The 3-Tier Architecture)
+A. Input Action (IA): "API 명세서"
+
+• 개념: "무엇을 하는가?"만 정의합니다. 키보드인지 패드인지는 몰라도 됩니다.
+
+• 비유: 인터페이스(Interface) 또는 API 엔드포인트 정의 (`POST /api/move`).
+
+• 내용: `IA_Move` (이동하겠다), `IA_Jump` (뛰겠다). 데이터 타입(bool, float, Vector2D)만 정합니다.
+
+B. Input Mapping Context (IMC): "라우터(Router)"
+
+• 개념: 실제 하드웨어 신호(Key)를 Input Action(API)으로 연결해 주는 매핑 테이블입니다.
+
+• 비유: Router 또는 Configuration Profile.
+
+• 기능:
+
+  • `W` 키 -> `IA_Move` (Y축 +1)
+
+  • `S` 키 -> `IA_Move` (Y축 -1)
+
+  • `Gamepad Stick` -> `IA_Move`
+
+• 특징: 이 Context는 런타임에 갈아 끼울 수 있습니다. (아래 3번에서 설명)
+
+C. Modifiers & Triggers: "미들웨어(Middleware)"
+
+• 개념: 입력값이 로직에 도달하기 전에 데이터를 가공하거나 필터링합니다.
+
+• 비유: Filter 또는 Interceptor.
+
+• 예시:
+
+  • Deadzone: 스틱이 살짝 쏠린 건 무시해라 (노이즈 필터링).
+
+  • Negate: 값을 반전시켜라 (Y축 반전).
+
+  • Hold: 2초 이상 눌러야 발동해라 (차징 스킬).
+
+3. 컨텍스트 스위칭 (Context Switching): "프로파일 변경"
+Enhanced Input의 가장 강력한 기능입니다. 상황에 따라 **IMC(라우터)**를 통째로 교체할 수 있습니다.
+
+• 상황: 캐릭터가 '걷기 모드'에서 '운전 모드'로 변경됨.
+
+• 백엔드 비유: Spring Profile을 `dev`에서 `prod`로 바꾸면 DB 연결 설정이 싹 바뀌는 것과 같습니다.
+
+• 작동:
+
+  1. `IMC_OnFoot` 비활성화 (W가 걷기).
+
+  2. `IMC_Driving` 활성화 (W가 액셀).
+
+  • 결과: 코드를 수정할 필요 없이, 매핑 파일(IMC)만 교체하면 로직이 바뀝니다.
+
+4. Observer Pattern (Binding)
+• 코드는 `IA_Move`라는 추상적인 액션만 바라봅니다.
+
+• "W키가 눌렸어?"를 체크하는 게 아니라, "Move 액션이 발동했어?"라고 구독(Subscribe)합니다.
+
+• 입력이 들어오면 엔진이 등록된 함수(핸들러)를 호출해 줍니다. (Event-Driven).
+
+5. 요약
+1. Input Action: 추상적인 의도 (Interface).
+
+2. Input Mapping Context: 구체적인 키 매핑 (Implementation/Config).
+
+3. Modifier: 데이터 가공 (Middleware).
+
+4. Context Switching: 상황에 따른 매핑 교체 (Profile Switching).
+
+---
